@@ -1,0 +1,22 @@
+{
+  "name": "tiktok-livestream-games",
+  "version": "1.0.0",
+  "description": "Game câu cá overlay TikTok LIVE",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "test": "node --test \"test/**/*.test.js\""
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.3.0",
+    "tiktok-live-connector": "^2.5.0",
+    "ws": "^8.22.2"
+  },
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  }
+}

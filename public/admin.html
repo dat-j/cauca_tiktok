@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bảng điều khiển — Câu Cá LIVE</title>
+<style>
+  :root { --bg:#0f1720; --panel:#17212d; --line:#2a3848; --text:#e6edf3; --muted:#8b9bb0; --accent:#2f9bff; --ok:#3fb950; --warn:#d29922; --err:#f85149; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.45 system-ui, "Segoe UI", Roboto, sans-serif; background:var(--bg); color:var(--text); }
+  header { padding:14px 20px; border-bottom:1px solid var(--line); display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  header h1 { font-size:18px; margin:0; }
+  header a { color:var(--accent); }
+  main { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:16px; padding:16px 20px; }
+  section { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+  h2 { font-size:15px; margin:0 0 10px; }
+  label { display:block; color:var(--muted); font-size:12px; margin:8px 0 3px; }
+  input, select { width:100%; padding:7px 9px; border-radius:6px; border:1px solid var(--line); background:#0c131b; color:var(--text); font:inherit; }
+  .row { display:flex; gap:8px; align-items:end; flex-wrap:wrap; }
+  .row > * { flex:1; min-width:90px; }
+  button { padding:7px 12px; border-radius:6px; border:1px solid var(--line); background:#22303f; color:var(--text); cursor:pointer; font:inherit; }
+  button:hover { border-color:var(--accent); }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  button.danger { background:#3a1d1f; border-color:#6b2c2f; }
+  .grid-btn { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:8px; }
+  .pill { display:inline-block; padding:2px 9px; border-radius:999px; font-size:12px; font-weight:600; }
+  .s-connected { background:#123d1e; color:var(--ok); } .s-connecting { background:#3d300f; color:var(--warn); }
+  .s-error { background:#3d1214; color:var(--err); } .s-disconnected { background:#222c38; color:var(--muted); }
+  .kv { display:grid; grid-template-columns:auto 1fr; gap:4px 12px; margin-top:8px; }
+  .kv dt { color:var(--muted); } .kv dd { margin:0; word-break:break-word; }
+  #log { height:260px; overflow:auto; font:12px/1.4 ui-monospace, Consolas, monospace; background:#0c131b; border-radius:6px; padding:8px; border:1px solid var(--line); }
+  #log div { white-space:pre-wrap; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  td, th { padding:4px 6px; border-bottom:1px solid var(--line); text-align:left; }
+  th { color:var(--muted); font-weight:500; }
+  .muted { color:var(--muted); font-size:12px; }
+  #toast { position:fixed; right:16px; bottom:16px; padding:10px 14px; border-radius:8px; background:#22303f; border:1px solid var(--line); opacity:0; transition:opacity .2s; max-width:420px; }
+  #toast.show { opacity:1; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎣 Bảng điều khiển — Câu Cá LIVE</h1>
+  <span id="wsState" class="pill s-disconnected">WS: chưa nối</span>
+  <a href="/" target="_blank" rel="noopener">Mở overlay ↗</a>
+</header>
+<main>
+  <section>
+    <h2>Kết nối TikTok LIVE</h2>
+    <label for="username">Username TikTok (không cần @)</label>
+    <div class="row">
+      <input id="username" placeholder="vd: ten_kenh_cua_ban" autocomplete="off">
+      <button class="primary" id="btnConnect" style="flex:0 0 auto">Kết nối</button>
+      <button id="btnDisconnect" style="flex:0 0 auto">Ngắt</button>
+    </div>
+    <dl class="kv">
+      <dt>Trạng thái</dt><dd><span id="stTiktok" class="pill s-disconnected">disconnected</span></dd>
+      <dt>Kênh</dt><dd id="stUser">—</dd>
+      <dt>Người xem</dt><dd id="stViewers">0</dd>
+      <dt>Hàng chờ</dt><dd id="stQueue">0</dd>
+      <dt>Thông báo</dt><dd id="stMsg">—</dd>
+    </dl>
+    <p class="muted">Sign API key (Euler Stream) đặt qua biến môi trường <code>EULER_API_KEY</code> hoặc <code>SIGN_API_KEY</code> khi chạy server.</p>
+  </section>
+
+  <section>
+    <h2>Giả lập sự kiện</h2>
+    <div class="row">
+      <div><label for="simUser">userId</label><input id="simUser" value="test_user"></div>
+      <div><label for="simNick">Tên hiển thị</label><input id="simNick" value="Người Thử"></div>
+    </div>
+    <label>Quà theo tier (1 lần tặng)</label>
+    <div class="grid-btn" id="giftBtns"></div>
+    <div class="row" style="margin-top:8px">
+      <div><label for="customDia">Kim cương / quà</label><input id="customDia" type="number" min="1" value="10"></div>
+      <div><label for="customRep">Số lượng (repeatCount)</label><input id="customRep" type="number" min="1" value="1"></div>
+      <button id="btnCustomGift" style="flex:0 0 auto">Tặng</button>
+    </div>
+    <div class="grid-btn">
+      <button data-sim="like">❤️ +30 like</button>
+      <button data-sim="follow">➕ Follow</button>
+      <button data-sim="share">🔗 Share</button>
+      <button data-sim="chat">💬 Comment</button>
+      <button id="btnRandomUser">🎲 Người mới</button>
+    </div>
+    <label>Burst (load test)</label>
+    <div class="row">
+      <div><label for="burstPlayers">Số người</label><input id="burstPlayers" type="number" min="1" max="200" value="20"></div>
+      <div><label for="burstDur">Thời gian (giây)</label><input id="burstDur" type="number" min="0" max="600" value="30"></div>
+      <button id="btnBurst" style="flex:0 0 auto">🚀 Burst</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Bảng xếp hạng</h2>
+    <div class="row" style="margin-bottom:6px">
+      <select id="lbMode"><option value="leaderboard">Phiên này</option><option value="allTime">Mọi thời đại</option></select>
+    </div>
+    <table><thead><tr><th>#</th><th>Tên</th><th>Điểm</th><th>Cần</th><th>Cá to nhất</th></tr></thead><tbody id="lbBody"></tbody></table>
+    <div class="row" style="margin-top:12px">
+      <button class="danger" id="btnResetSession">Reset phiên</button>
+      <button class="danger" id="btnResetAll">Xoá toàn bộ (cả mọi thời đại)</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Nhật ký sự kiện</h2>
+    <div id="log"></div>
+  </section>
+</main>
+<div id="toast"></div>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  let config = { rods: [], baits: [], fish: [] };
+  let lb = { leaderboard: [], allTime: [] };
+
+  function toast(text) {
+    const t = $('toast'); t.textContent = text; t.classList.add('show');
+    clearTimeout(toast.timer); toast.timer = setTimeout(() => t.classList.remove('show'), 2500);
+  }
+  function log(text) {
+    const box = $('log'); const div = document.createElement('div');
+    div.textContent = new Date().toLocaleTimeString('vi-VN') + '  ' + text;
+    box.prepend(div);
+    while (box.childNodes.length > 300) box.lastChild.remove();
+  }
+  async function api(path, body) {
+    try {
+      const res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.ok === false) toast('Lỗi: ' + (data.error || data.status?.message || res.status));
+      return data;
+    } catch (err) { toast('Không gọi được server: ' + err.message); return {}; }
+  }
+  const rodName = (tier) => (config.rods.find((r) => r.tier === tier) || {}).name || ('Tier ' + tier);
+  const fmt = (n) => Number(n || 0).toLocaleString('vi-VN');
+
+  function renderStatus(s) {
+    if (!s) return;
+    const el = $('stTiktok'); el.textContent = s.tiktok; el.className = 'pill s-' + s.tiktok;
+    $('stUser').textContent = s.username ? '@' + s.username : '—';
+    $('stViewers').textContent = fmt(s.viewers);
+    $('stQueue').textContent = fmt(s.queueLength);
+    $('stMsg').textContent = s.message || '—';
+  }
+  function renderLb() {
+    const rows = lb[$('lbMode').value] || [];
+    const body = $('lbBody'); body.replaceChildren();
+    for (const e of rows) {
+      const tr = document.createElement('tr');
+      for (const v of [e.rank, e.nickname, fmt(e.score), rodName(e.rodTier), e.bestCatch ? `${e.bestCatch.emoji} ${e.bestCatch.name} (${fmt(e.bestCatch.points)})` : '—']) {
+        const td = document.createElement('td'); td.textContent = v; tr.append(td);
+      }
+      body.append(tr);
+    }
+    if (!rows.length) { const tr = document.createElement('tr'); const td = document.createElement('td'); td.colSpan = 5; td.className = 'muted'; td.textContent = 'Chưa có ai'; tr.append(td); body.append(tr); }
+  }
+  function renderGiftButtons() {
+    const box = $('giftBtns'); box.replaceChildren();
+    for (const r of config.rods) {
+      const dia = Math.max(1, r.minDiamonds);
+      const b = document.createElement('button');
+      b.textContent = `${r.name} (${dia}💎)`;
+      b.onclick = () => sendGift(dia, 1, r.name);
+      box.append(b);
+    }
+  }
+  const who = () => ({ userId: $('simUser').value.trim() || 'test_user', nickname: $('simNick').value.trim() || 'Người Thử' });
+  function sendGift(diamonds, repeatCount, giftName) {
+    return api('/api/simulate', { type: 'gift', ...who(), diamonds, repeatCount, giftName: giftName || 'Quà thử' });
+  }
+
+  $('btnConnect').onclick = async () => {
+    const username = $('username').value.trim();
+    if (!username) return toast('Nhập username trước');
+    try { localStorage.setItem('fishing.username', username); } catch {}
+    $('btnConnect').disabled = true;
+    const r = await api('/api/connect', { username });
+    $('btnConnect').disabled = false;
+    if (r.status) renderStatus(r.status);
+  };
+  $('btnDisconnect').onclick = async () => { const r = await api('/api/disconnect'); if (r.status) renderStatus(r.status); };
+  $('btnCustomGift').onclick = () => sendGift(Number($('customDia').value), Number($('customRep').value), 'Quà tuỳ chỉnh');
+  document.querySelectorAll('[data-sim]').forEach((b) => {
+    b.onclick = () => {
+      const type = b.dataset.sim;
+      const body = { type, ...who() };
+      if (type === 'like') body.count = 30;
+      if (type === 'chat') body.comment = 'Xin chào!';
+      api('/api/simulate', body);
+    };
+  });
+  $('btnRandomUser').onclick = () => {
+    const n = Math.floor(Math.random() * 9000 + 1000);
+    $('simUser').value = 'user' + n; $('simNick').value = 'Khách ' + n;
+  };
+  $('btnBurst').onclick = async () => {
+    const r = await api('/api/simulate/burst', { players: Number($('burstPlayers').value), durationSec: Number($('burstDur').value) });
+    if (r.ok) toast(`Đã lên lịch ${r.scheduled} sự kiện`);
+  };
+  $('btnResetSession').onclick = () => { if (confirm('Reset phiên hiện tại? (bảng mọi thời đại giữ nguyên)')) api('/api/reset', { scope: 'session' }); };
+  $('btnResetAll').onclick = () => { if (confirm('Xoá TOÀN BỘ, kể cả bảng mọi thời đại?')) api('/api/reset', { scope: 'all' }); };
+  $('lbMode').onchange = renderLb;
+  try { $('username').value = localStorage.getItem('fishing.username') || ''; } catch {}
+
+  let delay = 1000;
+  function connectWs() {
+    const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws');
+    ws.onopen = () => { delay = 1000; $('wsState').textContent = 'WS: đã nối'; $('wsState').className = 'pill s-connected'; };
+    ws.onclose = () => {
+      $('wsState').textContent = 'WS: mất kết nối'; $('wsState').className = 'pill s-error';
+      setTimeout(connectWs, delay); delay = Math.min(delay * 2, 15000);
+    };
+    ws.onmessage = (e) => {
+      let m; try { m = JSON.parse(e.data); } catch { return; }
+      switch (m.type) {
+        case 'state':
+          config = m.config || config; lb = { leaderboard: m.leaderboard, allTime: m.allTime };
+          renderGiftButtons(); renderLb(); renderStatus(m.status);
+          log(`state: ${m.players.length} người chơi`);
+          break;
+        case 'status': renderStatus(m.status); break;
+        case 'leaderboard': lb = { leaderboard: m.leaderboard, allTime: m.allTime }; renderLb(); break;
+        case 'gift': log(`🎁 ${m.nickname}: ${m.giftName} ${m.diamonds}💎 → ${m.baitCount} mồi tier ${m.baitTier}${m.rodUpgraded ? ', lên ' + rodName(m.rodTier) : ''}`); break;
+        case 'catch': log(`🐟 ${m.userId} câu được ${m.fish.emoji} ${m.fish.name} [${m.fish.rarity}] +${m.points} (tổng ${m.score})${m.isBest ? ' ★' : ''}`); break;
+        case 'player_leave': log(`↩ ${m.userId} rời slot ${m.slot}`); break;
+        case 'toast': log(`📣 ${m.text}`); break;
+      }
+    };
+  }
+  connectWs();
+})();
+</script>
+</body>
+</html>
